@@ -44,14 +44,30 @@ recognizer = cv2.face.LBPHFaceRecognizer_create()
 model_trained = False
 
 def load_model():
-    """Membaca model wajah yang sudah dilatih jika ada."""
+    """Membaca model wajah yang sudah dilatih jika ada, atau latih ulang jika ada foto."""
     global model_trained
     if os.path.exists(MODEL_PATH):
         try:
             recognizer.read(MODEL_PATH)
             model_trained = True
-        except Exception:
+            print(f"[INFO] Model wajah berhasil dimuat dari {MODEL_PATH}")
+        except Exception as e:
+            print(f"[WARN] Gagal baca model: {e}")
             model_trained = False
+
+    # Jika model tidak ada tapi folder foto ada → retrain otomatis
+    if not model_trained and os.path.isdir(FACE_DIR):
+        foto_ada = any(
+            f.endswith('.jpg')
+            for nim_dir in os.listdir(FACE_DIR)
+            for f in os.listdir(os.path.join(FACE_DIR, nim_dir))
+            if os.path.isdir(os.path.join(FACE_DIR, nim_dir))
+        )
+        if foto_ada:
+            print("[INFO] Model tidak ada tapi foto tersedia, melatih ulang...")
+            ok, count = retrain_model()
+            if ok:
+                print(f"[INFO] Model berhasil dilatih ulang dari {count} foto")
 
 load_model()
 
