@@ -5,14 +5,18 @@ import base64
 import sqlite3
 import numpy as np
 from datetime import datetime, date
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
 from io import BytesIO
 from PIL import Image
 import math
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'absenai-secret-2024-ganti-ini')
 CORS(app)
+
+# Password admin (ubah via env var ADMIN_PASSWORD di Render)
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
 
 # Konfigurasi Path dan Direktori
 BASE_DIR = os.path.dirname(__file__)
@@ -217,7 +221,52 @@ def daftar():
 
 @app.route('/admin')
 def admin():
+    if not session.get('admin_logged_in'):
+        return redirect('/admin/login')
     return send_from_directory(BASE_DIR, 'admin.html')
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    error = ''
+    if request.method == 'POST':
+        pwd = request.form.get('password', '')
+        if pwd == ADMIN_PASSWORD:
+            session['admin_logged_in'] = True
+            return redirect('/admin')
+        error = 'Password salah!'
+    return f'''
+    <!DOCTYPE html><html lang="id"><head>
+    <meta charset="UTF-8"><title>Login Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+      *{{margin:0;padding:0;box-sizing:border-box}}
+      body{{font-family:'Space Grotesk',sans-serif;background:#080c14;color:#e2e8f0;
+            min-height:100vh;display:flex;align-items:center;justify-content:center}}
+      .card{{background:#111827;border:1px solid #1a2540;border-radius:14px;padding:2.5rem;width:340px}}
+      h2{{font-size:1.3rem;margin-bottom:.3rem;color:#00d4ff}}
+      p{{font-size:.85rem;color:#64748b;margin-bottom:1.5rem}}
+      input{{width:100%;background:#0d1520;border:1px solid #1a2540;color:#e2e8f0;
+             padding:.7rem 1rem;border-radius:8px;font-size:.9rem;outline:none;margin-bottom:1rem}}
+      input:focus{{border-color:#00d4ff}}
+      button{{width:100%;background:linear-gradient(135deg,#00d4ff,#0099cc);color:#000;
+              border:none;padding:.8rem;border-radius:8px;font-weight:600;font-size:.9rem;cursor:pointer}}
+      .error{{color:#ef4444;font-size:.83rem;margin-bottom:.8rem}}
+    </style></head><body>
+    <div class="card">
+      <h2>🔐 Login Admin</h2>
+      <p>Masukkan password untuk akses panel admin</p>
+      {"<div class='error'>" + error + "</div>" if error else ""}
+      <form method="POST">
+        <input type="password" name="password" placeholder="Password admin" autofocus required>
+        <button type="submit">Masuk</button>
+      </form>
+    </div></body></html>
+    '''
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_logged_in', None)
+    return redirect('/admin/login')
 
 # API: Mendaftarkan mahasiswa baru beserta foto sampel wajah
 @app.route('/api/mahasiswa/daftar', methods=['POST'])
