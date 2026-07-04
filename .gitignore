@@ -1,0 +1,34 @@
+# =============================================
+# File database & model (JANGAN diupload ke GitHub)
+# Di cloud akan disimpan di persistent disk /data
+# =============================================
+database/
+models/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+reset_absen_hari_ini.py

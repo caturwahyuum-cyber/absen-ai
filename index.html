@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presensi Mahasiswa — Wajah AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #080c14;
+  --surface:   #0d1520;
+  --border:    #1a2540;
+  --accent:    #00d4ff;
+  --accent2:   #7c3aed;
+  --success:   #10b981;
+  --danger:    #ef4444;
+  --warn:      #f59e0b;
+  --text:      #e2e8f0;
+  --muted:     #64748b;
+  --card:      #111827;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.2rem 2rem;
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,12,20,.85);
+}
+
+.logo {
+  display: flex; align-items: center; gap: .6rem;
+  font-size: 1.3rem; font-weight: 700;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+}
+.logo span { color: var(--accent); }
+
+#clock {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .95rem;
+  color: var(--accent);
+  letter-spacing: .05em;
+}
+
+nav { display: flex; gap: .5rem; }
+nav a {
+  padding: .4rem .9rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: .85rem;
+  font-weight: 500;
+  transition: all .2s;
+  border: 1px solid transparent;
+}
+nav a:hover { color: var(--text); border-color: var(--border); }
+nav a.active { color: var(--accent); border-color: var(--accent); background: rgba(0,212,255,.06); }
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.card-header {
+  padding: 1.1rem 1.4rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: .7rem;
+}
+.card-header h3 { font-size: .95rem; font-weight: 600; }
+.card-header .icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .85rem;
+}
+.icon-blue  { background: rgba(0,212,255,.12); color: var(--accent); }
+.icon-green { background: rgba(16,185,129,.12); color: var(--success); }
+.icon-purple{ background: rgba(124,58,237,.12); color: var(--accent2); }
+
+.card-body { padding: 1.4rem; }
+
+/* Camera */
+.camera-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #000;
+  border: 2px solid var(--border);
+}
+#video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+#canvas { display: none; }
+
+.cam-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.face-guide {
+  width: 180px; height: 220px;
+  border: 2px solid rgba(0,212,255,.5);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3000px rgba(0,0,0,.35), 0 0 30px rgba(0,212,255,.2);
+  animation: pulse-border 2s ease-in-out infinite;
+}
+@keyframes pulse-border {
+  0%,100% { border-color: rgba(0,212,255,.5); box-shadow: 0 0 0 3000px rgba(0,0,0,.35), 0 0 20px rgba(0,212,255,.2); }
+  50%      { border-color: rgba(0,212,255,.9); box-shadow: 0 0 0 3000px rgba(0,0,0,.35), 0 0 40px rgba(0,212,255,.4); }
+}
+
+.cam-status {
+  position: absolute; bottom: 10px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  padding: .35rem .9rem;
+  border-radius: 20px;
+  font-size: .78rem;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+/* Tipe Presensi */
+.tipe-group {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: .6rem; margin-bottom: 1rem;
+}
+.tipe-btn {
+  padding: .7rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  font-size: .88rem;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex; align-items: center; justify-content: center; gap: .4rem;
+}
+.tipe-btn.active-masuk {
+  border-color: var(--success); color: var(--success);
+  background: rgba(16,185,129,.08);
+}
+.tipe-btn.active-pulang {
+  border-color: var(--warn); color: var(--warn);
+  background: rgba(245,158,11,.08);
+}
+.tipe-btn:hover:not(.active-masuk):not(.active-pulang) {
+  border-color: var(--accent); color: var(--accent);
+}
+
+/* Location Bar */
+.loc-bar {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .7rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: .82rem;
+}
+.loc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.loc-dot.ok  { background: var(--success); box-shadow: 0 0 6px var(--success); animation: blink 1.5s infinite; }
+.loc-dot.bad { background: var(--danger); }
+.loc-dot.wait{ background: var(--muted); }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.4} }
+
+/* Capture Button */
+.btn-capture {
+  width: 100%;
+  padding: .95rem;
+  background: linear-gradient(135deg, var(--accent), #0099cc);
+  border: none;
+  border-radius: 10px;
+  color: #000;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1rem; font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+}
+.btn-capture:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,212,255,.25); }
+.btn-capture:disabled {
+  background: var(--border); color: var(--muted);
+  cursor: not-allowed; transform: none; box-shadow: none;
+}
+
+/* Result Panel */
+.result-panel {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  border: 1px solid;
+  display: none;
+}
+.result-panel.success { border-color: var(--success); background: rgba(16,185,129,.06); }
+.result-panel.error   { border-color: var(--danger);  background: rgba(239,68,68,.06); }
+
+.result-panel .r-name { font-size: 1.1rem; font-weight: 700; margin-bottom: .3rem; }
+.result-panel .r-meta { font-size: .8rem; color: var(--muted); margin-bottom: .6rem; font-family: 'JetBrains Mono', monospace; }
+.result-panel .r-msg  { font-size: .88rem; }
+
+.badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+.badge {
+  padding: .2rem .6rem;
+  border-radius: 20px;
+  font-size: .75rem; font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+.badge-green { background: rgba(16,185,129,.15); color: var(--success); border: 1px solid rgba(16,185,129,.3); }
+.badge-red   { background: rgba(239,68,68,.15);  color: var(--danger);  border: 1px solid rgba(239,68,68,.3); }
+.badge-blue  { background: rgba(0,212,255,.1);   color: var(--accent);  border: 1px solid rgba(0,212,255,.2); }
+.badge-warn  { background: rgba(245,158,11,.1);  color: var(--warn);    border: 1px solid rgba(245,158,11,.2); }
+
+/* Stats Cards */
+.stats-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: .8rem; margin-bottom: 1.5rem;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+}
+.stat-val { font-size: 1.8rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.stat-val.blue   { color: var(--accent); }
+.stat-val.green  { color: var(--success); }
+.stat-val.purple { color: var(--accent2); }
+.stat-lbl { font-size: .75rem; color: var(--muted); margin-top: .2rem; }
+
+/* Rekap Table */
+.rekap-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+th {
+  text-align: left; padding: .7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted); font-weight: 500;
+  font-family: 'JetBrains Mono', monospace; font-size: .75rem;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+td { padding: .7rem 1rem; border-bottom: 1px solid rgba(26,37,64,.5); }
+tr:hover td { background: rgba(255,255,255,.02); }
+.chip {
+  display: inline-flex; align-items: center;
+  padding: .15rem .55rem;
+  border-radius: 4px;
+  font-size: .72rem; font-weight: 600; font-family: 'JetBrains Mono', monospace;
+}
+.chip-masuk  { background: rgba(16,185,129,.15); color: var(--success); }
+.chip-pulang { background: rgba(245,158,11,.15);  color: var(--warn); }
+.chip-ok  { background: rgba(0,212,255,.1); color: var(--accent); }
+.chip-fail{ background: rgba(239,68,68,.1); color: var(--danger); }
+
+/* Right Layout */
+.right-col { display: flex; flex-direction: column; gap: 1.2rem; }
+
+/* Steps Guide */
+.steps { display: flex; flex-direction: column; gap: .8rem; }
+.step  { display: flex; align-items: flex-start; gap: .75rem; }
+.step-num {
+  width: 26px; height: 26px; flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(0,212,255,.1);
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  font-size: .75rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+.step-text strong { display: block; font-size: .85rem; margin-bottom: .1rem; }
+.step-text span   { font-size: .78rem; color: var(--muted); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(0,0,0,.2);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 768px) {
+  main { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: repeat(3,1fr); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎓</div>
+    Presensi<span>Mhs</span>
+  </div>
+  <div id="clock">--:--:--</div>
+  <nav>
+    <a href="/" class="active">Presensi</a>
+    <a href="/daftar">Daftar Wajah</a>
+    <a href="/admin">Admin</a>
+  </nav>
+</header>
+
+<main>
+  <!-- Area Utama -->
+  <div>
+    <!-- Statistik Presensi -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-val blue" id="st-total">—</div>
+        <div class="stat-lbl">Total Mahasiswa</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val green" id="st-hadir">—</div>
+        <div class="stat-lbl">Hadir Hari Ini</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val purple" id="st-bulan">—</div>
+        <div class="stat-lbl">Total Absensi Bulan Ini</div>
+      </div>
+    </div>
+
+    <!-- Verifikasi Wajah -->
+    <div class="card" style="margin-bottom:1.2rem">
+      <div class="card-header">
+        <div class="icon icon-blue">📷</div>
+        <h3>Verifikasi Wajah</h3>
+        <span style="margin-left:auto;font-size:.78rem;color:var(--muted)" id="cam-indicator">● Kamera aktif</span>
+      </div>
+      <div class="card-body">
+
+        <!-- Tipe Presensi -->
+        <div class="tipe-group">
+          <button class="tipe-btn active-masuk" id="btn-masuk" onclick="setTipe('masuk')">✅ Absen Masuk</button>
+          <button class="tipe-btn" id="btn-pulang" onclick="setTipe('pulang')">🏠 Absen Pulang</button>
+        </div>
+
+        <!-- Kamera -->
+        <div class="camera-wrap">
+          <video id="video" autoplay playsinline muted></video>
+          <canvas id="canvas"></canvas>
+          <div class="cam-overlay"><div class="face-guide"></div></div>
+          <div class="cam-status" id="cam-status">⏳ Menginisialisasi kamera…</div>
+        </div>
+
+        <!-- Indikator Lokasi -->
+        <div class="loc-bar" style="margin-top:.9rem">
+          <div class="loc-dot wait" id="loc-dot"></div>
+          <span id="loc-text" style="flex:1;color:var(--muted)">Meminta izin lokasi…</span>
+          <span id="loc-jarak" style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--muted)"></span>
+        </div>
+
+        <!-- Tombol Verifikasi -->
+        <button class="btn-capture" id="btn-capture" onclick="doAbsen()" disabled>
+          <span id="btn-text">🔍 Verifikasi & Absen</span>
+        </button>
+
+        <!-- Hasil Presensi -->
+        <div class="result-panel" id="result"></div>
+      </div>
+    </div>
+
+    <!-- Rekap Presensi -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon icon-green">📋</div>
+        <h3>Rekap Presensi Hari Ini</h3>
+        <input type="date" id="rekap-date" style="margin-left:auto;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:.3rem .6rem;border-radius:6px;font-size:.8rem;font-family:'Space Grotesk'" onchange="loadRekap()">
+      </div>
+      <div class="card-body rekap-wrap" style="padding:0">
+        <table>
+          <thead>
+            <tr>
+              <th>Nama</th><th>Tipe</th><th>Waktu</th><th>Wajah</th><th>Lokasi</th>
+            </tr>
+          </thead>
+          <tbody id="rekap-body">
+            <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">Memuat data…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Kanan Panduan -->
+  <div class="right-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="icon icon-purple">💡</div>
+        <h3>Cara Presensi</h3>
+      </div>
+      <div class="card-body">
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              <strong>Pilih Tipe Presensi</strong>
+              <span>Pilih tombol "Absen Masuk" atau "Absen Pulang".</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              <strong>Izinkan Kamera & GPS</strong>
+              <span>Berikan izin akses kamera dan lokasi pada browser Anda.</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              <strong>Posisikan Wajah</strong>
+              <span>Posisikan wajah Anda tepat di dalam lingkaran panduan.</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-text">
+              <strong>Buka Mata Anda</strong>
+              <span>Sistem akan memindai keaktifan mata (liveness detection).</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-text">
+              <strong>Klik Verifikasi</strong>
+              <span>Sistem akan memindai wajah dan memvalidasi posisi GPS Anda.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Keamanan -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon icon-blue">🔐</div>
+        <h3>Keamanan Sistem</h3>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;flex-direction:column;gap:.7rem">
+          <div style="display:flex;align-items:center;gap:.7rem;padding:.7rem;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+            <span style="font-size:1.3rem">👁️</span>
+            <div>
+              <div style="font-size:.83rem;font-weight:600">Liveness Detection</div>
+              <div style="font-size:.76rem;color:var(--muted)">Verifikasi mata untuk menghindari manipulasi foto</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.7rem;padding:.7rem;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+            <span style="font-size:1.3rem">🤖</span>
+            <div>
+              <div style="font-size:.83rem;font-weight:600">LBPH Face Recognition</div>
+              <div style="font-size:.76rem;color:var(--muted)">Proses identifikasi wajah secara lokal</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.7rem;padding:.7rem;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+            <span style="font-size:1.3rem">📍</span>
+            <div>
+              <div style="font-size:.83rem;font-weight:600">GPS Geofencing</div>
+              <div style="font-size:.76rem;color:var(--muted)">Validasi jarak mahasiswa dari wilayah kampus</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.7rem;padding:.7rem;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+            <span style="font-size:1.3rem">🔒</span>
+            <div>
+              <div style="font-size:.83rem;font-weight:600">Data Lokal Server</div>
+              <div style="font-size:.76rem;color:var(--muted)">Semua data disimpan di server lokal secara aman</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// State Aplikasi
+let stream = null;
+let tipeAbsen = 'masuk';
+let gpsLat = null, gpsLon = null;
+let gpsValid = false;
+const API = 'http://localhost:5000';
+
+// Target Koordinat Kampus (di-update dinamis dari backend)
+let targetLat = -6.7126590;
+let targetLon = 111.0138809;
+let targetRadius = 200;
+
+// Update Jam Realtime
+function updateClock() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock, 1000); updateClock();
+
+// Set Tipe Presensi
+function setTipe(t) {
+  tipeAbsen = t;
+  document.getElementById('btn-masuk').className  = 'tipe-btn' + (t==='masuk'  ? ' active-masuk'  : '');
+  document.getElementById('btn-pulang').className = 'tipe-btn' + (t==='pulang' ? ' active-pulang' : '');
+}
+
+// Inisialisasi Kamera
+async function initCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width:640, height:480, facingMode:'user' }
+    });
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      document.getElementById('cam-status').textContent = '✅ Kamera aktif — posisikan wajah Anda';
+      checkReady();
+    };
+  } catch(e) {
+    document.getElementById('cam-status').textContent = '❌ Akses kamera ditolak';
+    document.getElementById('cam-indicator').textContent = '● Kamera error';
+    document.getElementById('cam-indicator').style.color = 'var(--danger)';
+  }
+}
+
+// Inisialisasi Geolocation
+function initGPS() {
+  if (!navigator.geolocation) {
+    setLocUI(false, 'GPS tidak didukung browser ini', null);
+    return;
+  }
+  navigator.geolocation.watchPosition(pos => {
+    gpsLat = pos.coords.latitude;
+    gpsLon = pos.coords.longitude;
+    
+    // Hitung jarak haversine
+    const d = haversine(gpsLat, gpsLon, targetLat, targetLon);
+    gpsValid = d <= targetRadius;
+    setLocUI(gpsValid,
+      `${gpsLat.toFixed(5)}, ${gpsLon.toFixed(5)}`,
+      d
+    );
+    checkReady();
+  }, err => {
+    setLocUI(false, 'Gagal mendapatkan lokasi: ' + err.message, null);
+  }, { enableHighAccuracy: true, maximumAge: 5000 });
+}
+
+function haversine(lat1,lon1,lat2,lon2) {
+  const R=6371000, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function setLocUI(valid, text, jarak) {
+  const dot  = document.getElementById('loc-dot');
+  const txt  = document.getElementById('loc-text');
+  const dist = document.getElementById('loc-jarak');
+  dot.className = 'loc-dot ' + (valid ? 'ok' : (text.includes('Meminta') ? 'wait' : 'bad'));
+  txt.textContent = text;
+  txt.style.color = valid ? 'var(--success)' : (text.includes('Meminta') ? 'var(--muted)' : 'var(--danger)');
+  dist.textContent = jarak !== null ? `${Math.round(jarak)}m dari kampus` : '';
+}
+
+function checkReady() {
+  const camOk = stream !== null;
+  document.getElementById('btn-capture').disabled = !camOk;
+}
+
+// Proses Presensi
+async function doAbsen() {
+  const btn  = document.getElementById('btn-capture');
+  const res  = document.getElementById('result');
+  const text = document.getElementById('btn-text');
+
+  // Ambil frame video
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+  ctx.save();
+  ctx.scale(-1,1); ctx.drawImage(video, -canvas.width, 0);
+  ctx.restore();
+  const foto = canvas.toDataURL('image/jpeg', 0.85);
+
+  btn.disabled = true;
+  text.innerHTML = '<div class="spinner"></div> Memverifikasi…';
+  res.style.display = 'none';
+
+  try {
+    const resp = await fetch(`${API}/api/absen`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        foto, tipe: tipeAbsen,
+        latitude: gpsLat, longitude: gpsLon
+      })
+    });
+    const data = await resp.json();
+    showResult(data, resp.ok);
+    if (resp.ok) {
+      loadRekap();
+      loadStats();
+    }
+  } catch(e) {
+    showResult({ok:false, pesan:'Gagal menghubungi server. Pastikan backend berjalan.'}, false);
+  } finally {
+    btn.disabled = false;
+    text.textContent = '🔍 Verifikasi & Absen';
+  }
+}
+
+function showResult(data, ok) {
+  const el = document.getElementById('result');
+  el.style.display = 'block';
+  if (ok && data.ok) {
+    el.className = 'result-panel success';
+    el.innerHTML = `
+      <div class="r-name">✅ ${data.mahasiswa}</div>
+      <div class="r-meta">${data.nim} · ${data.kelas || '-'} · ${data.waktu}</div>
+      <div class="badges">
+        <span class="badge badge-blue">Kecocokan ${data.confidence}%</span>
+        <span class="badge ${data.lokasi?.valid ? 'badge-green' : 'badge-warn'}">
+          📍 ${data.lokasi?.valid ? 'Lokasi Valid' : 'Di Luar Kampus'}
+          ${data.lokasi?.jarak_m != null ? ' ('+Math.round(data.lokasi.jarak_m)+'m)' : ''}
+        </span>
+        <span class="badge ${data.tipe==='masuk'?'badge-green':'badge-warn'}">
+          ${data.tipe==='masuk'?'✅ Masuk':'🏠 Pulang'}
+        </span>
+      </div>`;
+  } else {
+    el.className = 'result-panel error';
+    el.innerHTML = `<div class="r-msg">❌ ${data.pesan || 'Terjadi kesalahan'}</div>
+      ${data.confidence ? `<div class="badges"><span class="badge badge-red">Skor wajah: ${data.confidence}%</span></div>` : ''}`;
+  }
+}
+
+// Ambil Rekap Presensi
+async function loadRekap() {
+  const dateEl = document.getElementById('rekap-date');
+  const tanggal = dateEl.value || new Date().toISOString().split('T')[0];
+  try {
+    const resp = await fetch(`${API}/api/rekap?tanggal=${tanggal}`);
+    const rows = await resp.json();
+    const tbody = document.getElementById('rekap-body');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">Belum ada presensi hari ini</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td><strong>${r.nama}</strong><br><span style="font-size:.72rem;color:var(--muted)">${r.nim}</span></td>
+        <td><span class="chip chip-${r.tipe}">${r.tipe}</span></td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:.78rem">${r.waktu.split(' ')[1] || r.waktu}</td>
+        <td><span class="badge badge-blue">${r.wajah_conf?.toFixed(1) || '-'}%</span></td>
+        <td><span class="chip ${r.lokasi_valid ? 'chip-ok' : 'chip-fail'}">${r.lokasi_valid ? '✓ Valid' : '✗ Luar Kampus'}</span></td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    document.getElementById('rekap-body').innerHTML =
+      '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:1rem">Koneksi server gagal</td></tr>';
+  }
+}
+
+// Ambil Statistik Presensi
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/api/stats`);
+    const d = await r.json();
+    document.getElementById('st-total').textContent  = d.total_mahasiswa;
+    document.getElementById('st-hadir').textContent  = d.hadir_hari_ini;
+    document.getElementById('st-bulan').textContent  = d.total_absen_bln;
+    
+    // Update target koordinat GPS secara dinamis dari backend
+    if (d.campus) {
+      targetLat = d.campus.lat;
+      targetLon = d.campus.lon;
+      targetRadius = d.campus.radius_m;
+    }
+  } catch {}
+}
+
+// Inisialisasi awal
+const rekap_date = document.getElementById('rekap-date');
+rekap_date.value = new Date().toISOString().split('T')[0];
+
+initCamera();
+initGPS();
+loadRekap();
+loadStats();
+setInterval(() => { loadRekap(); loadStats(); }, 15000);
+</script>
+</body>
+</html>

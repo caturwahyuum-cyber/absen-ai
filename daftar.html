@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daftar Wajah Presensi — Presensi AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#080c14; --surface:#0d1520; --border:#1a2540;
+  --accent:#00d4ff; --accent2:#7c3aed; --success:#10b981;
+  --danger:#ef4444; --warn:#f59e0b; --text:#e2e8f0; --muted:#64748b; --card:#111827;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 2rem;border-bottom:1px solid var(--border);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;background:rgba(8,12,20,.85)}
+.logo{display:flex;align-items:center;gap:.6rem;font-size:1.3rem;font-weight:700}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.logo span{color:var(--accent)}
+nav a{padding:.4rem .9rem;border-radius:6px;text-decoration:none;color:var(--muted);font-size:.85rem;font-weight:500;transition:all .2s;border:1px solid transparent}
+nav a:hover{color:var(--text);border-color:var(--border)}
+nav a.active{color:var(--accent);border-color:var(--accent);background:rgba(0,212,255,.06)}
+
+main{flex:1;max-width:600px;width:100%;margin:2rem auto;padding:0 1.5rem;display:flex;flex-direction:column;justify-content:center}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.card-header{padding:1.2rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.7rem}
+.card-header h3{font-size:1rem;font-weight:600}
+.card-body{padding:1.4rem}
+.icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.85rem}
+.icon-blue{background:rgba(0,212,255,.12);color:var(--accent)}
+
+.form-group{margin-bottom:1rem}
+label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:.4rem;font-weight:500}
+input{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:.65rem .85rem;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:.88rem;outline:none;transition:border-color .2s}
+input:focus{border-color:var(--accent)}
+
+/* Camera */
+.camera-wrap{position:relative;width:100%;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#000;border:2px solid var(--border)}
+#video2{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#canvas2{display:none}
+.cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.face-guide{width:150px;height:185px;border:2px solid rgba(0,212,255,.5);border-radius:50%;box-shadow:0 0 0 3000px rgba(0,0,0,.35),0 0 30px rgba(0,212,255,.2);animation:pb 2s ease-in-out infinite}
+@keyframes pb{0%,100%{border-color:rgba(0,212,255,.5)}50%{border-color:rgba(0,212,255,.95)}}
+.cam-status{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.75);backdrop-filter:blur(8px);border:1px solid var(--border);padding:.3rem .8rem;border-radius:20px;font-size:.76rem;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+
+/* Photo Strip */
+.photo-strip{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.8rem}
+.photo-thumb{width:52px;height:52px;border-radius:6px;border:2px solid var(--success);object-fit:cover;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+.photo-counter{font-size:.8rem;color:var(--muted);margin-top:.4rem;font-family:'JetBrains Mono',monospace}
+
+.btn{width:100%;padding:.85rem;border:none;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#0099cc);color:#000}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,212,255,.25)}
+.btn-secondary{background:var(--surface);border:1px solid var(--border);color:var(--text);margin-bottom:.6rem}
+.btn-secondary:hover{border-color:var(--accent)}
+.btn-capture-add{background:var(--surface);border:1.5px dashed var(--border);color:var(--muted);margin-top:.6rem}
+.btn-capture-add:hover{border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+.alert{padding:.8rem 1rem;border-radius:8px;font-size:.85rem;margin-top:.8rem;display:none}
+.alert-success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--success)}
+.alert-error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--danger)}
+
+.progress-bar{height:4px;background:var(--border);border-radius:2px;margin-top:.8rem;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .3s}
+
+.spinner{width:16px;height:16px;border:2px solid rgba(0,0,0,.2);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎓</div>
+    Presensi<span>Mhs</span>
+  </div>
+  <nav>
+    <a href="/">Presensi</a>
+    <a href="/daftar" class="active">Daftar Wajah</a>
+    <a href="/admin">Admin</a>
+  </nav>
+</header>
+
+<main>
+  <div class="card">
+    <div class="card-header">
+      <div class="icon icon-blue">➕</div>
+      <h3>Registrasi Mandiri Mahasiswa</h3>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label>Nama Lengkap *</label>
+        <input type="text" id="inp-nama" placeholder="Contoh: Budi Santoso">
+      </div>
+      <div class="form-group">
+        <label>NIM (Nomor Induk Mahasiswa) *</label>
+        <input type="text" id="inp-nim" placeholder="Contoh: A11.2022.12345">
+      </div>
+      <div class="form-group">
+        <label>Kelas</label>
+        <input type="text" id="inp-kelas" placeholder="Contoh: TI-4A">
+      </div>
+
+      <label style="font-size:.8rem;color:var(--muted);font-weight:500;display:block;margin-bottom:.5rem">
+        Ambil Foto Sampel Wajah <span style="color:var(--accent)">(minimal 5 foto dengan berbagai sudut wajah)</span>
+      </label>
+
+      <!-- Kamera -->
+      <div class="camera-wrap">
+        <video id="video2" autoplay playsinline muted></video>
+        <canvas id="canvas2"></canvas>
+        <div class="cam-overlay"><div class="face-guide"></div></div>
+        <div class="cam-status" id="cam-status2">⏳ Memuat kamera…</div>
+      </div>
+
+      <button class="btn btn-capture-add" onclick="capturePhoto()" id="btn-capture-reg">
+        📸 Ambil Foto Wajah
+      </button>
+
+      <!-- Strip Foto -->
+      <div class="photo-strip" id="photo-strip"></div>
+      <div class="photo-counter" id="photo-counter">0 / 10 foto</div>
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0"></div></div>
+
+      <div style="margin-top:1rem">
+        <button class="btn btn-secondary" onclick="resetForm()">🔄 Reset Form</button>
+        <button class="btn btn-primary" id="btn-daftar" onclick="daftarMahasiswa()" disabled>
+          <span id="daftar-txt">✅ Kirim Pendaftaran</span>
+        </button>
+      </div>
+      <div class="alert" id="reg-alert"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = 'http://localhost:5000';
+let stream2 = null;
+let capturedPhotos = [];
+
+// Akses Kamera
+async function initCamera2() {
+  try {
+    stream2 = await navigator.mediaDevices.getUserMedia({ video:{width:640,height:480,facingMode:'user'} });
+    const v = document.getElementById('video2');
+    v.srcObject = stream2;
+    v.onloadedmetadata = () => {
+      document.getElementById('cam-status2').textContent = '✅ Kamera aktif';
+    };
+  } catch(e) {
+    document.getElementById('cam-status2').textContent = '❌ Akses kamera ditolak';
+  }
+}
+
+// Ambil Foto Wajah
+function capturePhoto() {
+  if (!stream2 || capturedPhotos.length >= 10) return;
+  const video  = document.getElementById('video2');
+  const canvas = document.getElementById('canvas2');
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+  ctx.save(); ctx.scale(-1,1); ctx.drawImage(video,-canvas.width,0); ctx.restore();
+  const b64 = canvas.toDataURL('image/jpeg', .85);
+  capturedPhotos.push(b64);
+  updatePhotoUI(b64);
+}
+
+function updatePhotoUI(newB64) {
+  const strip   = document.getElementById('photo-strip');
+  const counter = document.getElementById('photo-counter');
+  const prog    = document.getElementById('prog-fill');
+  const daftar  = document.getElementById('btn-daftar');
+
+  const img = document.createElement('img');
+  img.src = newB64;
+  img.className = 'photo-thumb';
+  strip.appendChild(img);
+
+  const n = capturedPhotos.length;
+  counter.textContent = `${n} / 10 foto`;
+  prog.style.width = Math.min(n/5*100,100)+'%';
+  daftar.disabled = n < 3;
+  document.getElementById('cam-status2').textContent = `📸 ${n} foto diambil${n<5?' — butuh '+(5-n)+' lagi':''}`;
+}
+
+function resetForm() {
+  document.getElementById('inp-nama').value = '';
+  document.getElementById('inp-nim').value  = '';
+  document.getElementById('inp-kelas').value = '';
+  capturedPhotos = [];
+  document.getElementById('photo-strip').innerHTML  = '';
+  document.getElementById('photo-counter').textContent = '0 / 10 foto';
+  document.getElementById('prog-fill').style.width = '0';
+  document.getElementById('btn-daftar').disabled   = true;
+  document.getElementById('reg-alert').style.display = 'none';
+  document.getElementById('cam-status2').textContent = '✅ Kamera aktif';
+}
+
+// Pendaftaran Mahasiswa
+async function daftarMahasiswa() {
+  const nama  = document.getElementById('inp-nama').value.trim();
+  const nim   = document.getElementById('inp-nim').value.trim();
+  const kelas = document.getElementById('inp-kelas').value.trim();
+  const alert = document.getElementById('reg-alert');
+
+  if (!nama || !nim) { showAlert('Nama dan NIM wajib diisi!', 'error'); return; }
+  if (capturedPhotos.length < 3) { showAlert('Ambil minimal 3 foto wajah terlebih dahulu.', 'error'); return; }
+
+  const btn = document.getElementById('btn-daftar');
+  const txt = document.getElementById('daftar-txt');
+  btn.disabled = true;
+  txt.innerHTML = '<div class="spinner"></div> Mendaftarkan…';
+
+  try {
+    const resp = await fetch(`${API}/api/mahasiswa/daftar`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ nama, nim, kelas, photos: capturedPhotos })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      showAlert(`✅ ${data.pesan}`, 'success');
+      resetForm();
+    } else {
+      showAlert(`❌ ${data.pesan}`, 'error');
+    }
+  } catch(e) {
+    showAlert('❌ Gagal terhubung ke server.', 'error');
+  } finally {
+    btn.disabled = false;
+    txt.textContent = '✅ Kirim Pendaftaran';
+  }
+}
+
+function showAlert(msg, type) {
+  const el = document.getElementById('reg-alert');
+  el.className = `alert alert-${type}`;
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+
+// Inisialisasi awal
+initCamera2();
+</script>
+</body>
+</html>
