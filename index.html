@@ -331,8 +331,11 @@ tr:hover td { background: rgba(255,255,255,.02); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @media (max-width: 768px) {
-  main { grid-template-columns: 1fr; }
-  .stats-grid { grid-template-columns: repeat(3,1fr); }
+  header { flex-direction: column; gap: 1rem; padding: 1rem; height: auto; }
+  main { grid-template-columns: 1fr; padding: 1rem; }
+  .stats-grid { grid-template-columns: 1fr; gap: .5rem; }
+  nav { flex-wrap: wrap; justify-content: center; }
+  .video-container { height: 350px; }
 }
 </style>
 </head>
