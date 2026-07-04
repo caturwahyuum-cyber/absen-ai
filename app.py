@@ -16,7 +16,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'absenai-secret-2024-ganti-ini')
 CORS(app)
 
 # Password admin (ubah via env var ADMIN_PASSWORD di Render)
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'adminmhsunv')
 
 # Konfigurasi Path dan Direktori
 BASE_DIR = os.path.dirname(__file__)
