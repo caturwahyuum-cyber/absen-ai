@@ -138,7 +138,7 @@ input:focus{border-color:var(--accent)}
 </main>
 
 <script>
-const API = 'http://localhost:5000';
+const API = window.location.origin; // otomatis pakai URL saat ini (lokal atau cloud)
 let stream2 = null;
 let capturedPhotos = [];
 

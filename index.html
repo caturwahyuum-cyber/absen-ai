@@ -528,7 +528,7 @@ let stream = null;
 let tipeAbsen = 'masuk';
 let gpsLat = null, gpsLon = null;
 let gpsValid = false;
-const API = 'http://localhost:5000';
+const API = window.location.origin; // otomatis pakai URL saat ini (lokal atau cloud)
 
 // Target Koordinat Kampus (di-update dinamis dari backend)
 let targetLat = -6.7126590;

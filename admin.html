@@ -156,7 +156,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 </main>
 
 <script>
-const API = 'http://localhost:5000';
+const API = window.location.origin; // otomatis pakai URL saat ini (lokal atau cloud)
 
 // Load Mahasiswa
 async function loadMahasiswa() {
