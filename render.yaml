@@ -2,13 +2,6 @@ services:
   - type: web
     name: absen-ai
     env: python
-    region: singapore   # paling dekat Indonesia
+    region: singapore
     buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
-    envVars:
-      - key: DATA_DIR
-        value: /data
-    disk:
-      name: absen-data
-      mountPath: /data
-      sizeGB: 1
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120

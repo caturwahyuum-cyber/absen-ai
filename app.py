@@ -15,11 +15,16 @@ app = Flask(__name__)
 CORS(app)
 
 # Konfigurasi Path dan Direktori
-# DATA_DIR: pakai /data (Render persistent disk) di cloud, atau folder lokal saat dev
+# Deteksi otomatis: Render cloud pakai /tmp/absen-data, lokal pakai database/
 BASE_DIR = os.path.dirname(__file__)
-DATA_DIR  = os.environ.get("DATA_DIR", os.path.join(BASE_DIR, "database"))
-DB_PATH   = os.path.join(DATA_DIR, "absen.db")
-FACE_DIR  = os.path.join(DATA_DIR, "faces")
+if os.environ.get("RENDER"):
+    # Di Render free plan, /tmp adalah satu-satunya folder yang bisa ditulis
+    DATA_DIR = os.environ.get("DATA_DIR", "/tmp/absen-data")
+else:
+    # Di lokal, pakai folder database/ di dalam project
+    DATA_DIR = os.environ.get("DATA_DIR", os.path.join(BASE_DIR, "database"))
+DB_PATH    = os.path.join(DATA_DIR, "absen.db")
+FACE_DIR   = os.path.join(DATA_DIR, "faces")
 MODEL_PATH = os.path.join(DATA_DIR, "face_model.yml")
 
 # Konfigurasi Koordinat Kampus (ganti sesuai lokasi kampus Anda)
