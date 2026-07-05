@@ -39,9 +39,44 @@ CAMPUS_RADIUS_M = 200      # Radius toleransi presensi (meter)
 os.makedirs(FACE_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
 
+def load_cascade(filename):
+    """Memuat CascadeClassifier secara aman. Jika file bawaan opencv kosong atau tidak ditemukan,
+    maka akan diunduh dari repository GitHub resmi OpenCV dan disimpan di DATA_DIR."""
+    # Coba load dari OpenCV default
+    default_path = os.path.join(cv2.data.haarcascades, filename)
+    cascade = cv2.CascadeClassifier(default_path)
+    
+    if not cascade.empty():
+        print(f"[INFO] Berhasil memuat cascade default: {filename}")
+        return cascade
+
+    # Jika kosong, coba load dari local DATA_DIR
+    local_path = os.path.join(DATA_DIR, filename)
+    if os.path.exists(local_path):
+        cascade = cv2.CascadeClassifier(local_path)
+        if not cascade.empty():
+            print(f"[INFO] Berhasil memuat cascade lokal: {local_path}")
+            return cascade
+
+    # Jika belum ada atau masih kosong, unduh dari internet
+    import urllib.request
+    url = f"https://raw.githubusercontent.com/opencv/opencv/master/data/haarcascades/{filename}"
+    print(f"[WARN] Cascade default kosong. Mengunduh {filename} dari {url}...")
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        urllib.request.urlretrieve(url, local_path)
+        cascade = cv2.CascadeClassifier(local_path)
+        if not cascade.empty():
+            print(f"[INFO] Berhasil mengunduh dan memuat cascade: {local_path}")
+            return cascade
+    except Exception as e:
+        print(f"[ERROR] Gagal mengunduh atau memuat cascade {filename}: {e}")
+
+    return cascade
+
 # Load XML cascade classifier untuk wajah dan mata
-face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-eye_cascade  = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+face_cascade = load_cascade('haarcascade_frontalface_default.xml')
+eye_cascade  = load_cascade('haarcascade_eye.xml')
 
 # Inisialisasi LBPH Face Recognizer
 recognizer = cv2.face.LBPHFaceRecognizer_create()
@@ -306,8 +341,10 @@ def daftar_mahasiswa():
                 if face is not None:
                     cv2.imwrite(os.path.join(person_dir, f'{i:03d}.jpg'), face)
                     saved += 1
-            except Exception:
-                pass
+                else:
+                    print(f"[WARN] Wajah tidak terdeteksi pada foto sampel ke-{i}")
+            except Exception as e:
+                print(f"[ERROR] Gagal memproses foto sampel ke-{i}: {e}")
 
         # Validasi jika jumlah foto yang tersimpan kurang dari batas minimal
         if saved < 2:
