@@ -77,6 +77,7 @@ def load_cascade(filename):
 # Load XML cascade classifier untuk wajah dan mata
 face_cascade = load_cascade('haarcascade_frontalface_default.xml')
 eye_cascade  = load_cascade('haarcascade_eye.xml')
+eye_glasses_cascade = load_cascade('haarcascade_eye_tree_eyeglasses.xml')
 
 # Inisialisasi LBPH Face Recognizer
 recognizer = cv2.face.LBPHFaceRecognizer_create()
@@ -177,11 +178,20 @@ def check_liveness(img_bgr, rect):
     # Coba deteksi mata normal
     eyes = eye_cascade.detectMultiScale(gray_roi, scaleFactor=1.1, minNeighbors=2, minSize=(15, 15))
 
+    # Coba deteksi mata kacamata jika normal tidak terdeteksi
+    if len(eyes) == 0:
+        eyes = eye_glasses_cascade.detectMultiScale(gray_roi, scaleFactor=1.1, minNeighbors=2, minSize=(15, 15))
+
     # Fallback: pakai CLAHE + parameter lebih longgar
     if len(eyes) == 0:
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         gray_roi_eq = clahe.apply(gray_roi)
-        eyes = eye_cascade.detectMultiScale(gray_roi_eq, scaleFactor=1.05, minNeighbors=1, minSize=(10, 10))
+        
+        # Coba kacamata dulu di gambar CLAHE
+        eyes = eye_glasses_cascade.detectMultiScale(gray_roi_eq, scaleFactor=1.05, minNeighbors=1, minSize=(10, 10))
+        # Jika masih nihil, coba mata normal
+        if len(eyes) == 0:
+            eyes = eye_cascade.detectMultiScale(gray_roi_eq, scaleFactor=1.05, minNeighbors=1, minSize=(10, 10))
 
     eye_count = len(eyes)
     # Minimal terdeteksi 1 mata untuk lolos
