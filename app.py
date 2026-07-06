@@ -397,10 +397,14 @@ def absen():
     if face is None:
         return jsonify({'ok': False, 'pesan': 'Wajah tidak terdeteksi. Posisikan wajah dengan benar.'}), 400
 
-    # 2. Cek Liveness (Deteksi Mata)
-    is_live, eye_count = check_liveness(img, rect)
-    if not is_live:
-        return jsonify({'ok': False, 'pesan': 'Gagal verifikasi liveness. Pastikan mata terbuka.'}), 400
+    bypass_liveness = data.get('bypass_liveness', False)
+
+    # 2. Cek Liveness (Deteksi Mata) jika tidak di-bypass
+    eye_count = 0
+    if not bypass_liveness:
+        is_live, eye_count = check_liveness(img, rect)
+        if not is_live:
+            return jsonify({'ok': False, 'pesan': 'Gagal verifikasi liveness. Pastikan mata terbuka.'}), 400
 
     # 3. Pengenalan Wajah via LBPH
     if not model_trained:

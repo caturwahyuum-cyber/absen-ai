@@ -403,6 +403,12 @@ tr:hover td { background: rgba(255,255,255,.02); }
           <span id="loc-jarak" style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--muted)"></span>
         </div>
 
+        <!-- Bypass Liveness Check Checkbox -->
+        <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.8rem; margin-top:.5rem">
+          <input type="checkbox" id="bypass-liveness" style="cursor:pointer; width:16px; height:16px; accent-color:var(--accent)">
+          <label for="bypass-liveness" style="font-size:.82rem; color:var(--muted); cursor:pointer; user-select:none">Bypass Liveness (Lewati Deteksi Mata)</label>
+        </div>
+
         <!-- Tombol Verifikasi -->
         <button class="btn-capture" id="btn-capture" onclick="doAbsen()" disabled>
           <span id="btn-text">🔍 Verifikasi & Absen</span>
@@ -636,13 +642,16 @@ async function doAbsen() {
   text.innerHTML = '<div class="spinner"></div> Memverifikasi…';
   res.style.display = 'none';
 
+  const bypassLiveness = document.getElementById('bypass-liveness').checked;
+
   try {
     const resp = await fetch(`${API}/api/absen`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         foto, tipe: tipeAbsen,
-        latitude: gpsLat, longitude: gpsLon
+        latitude: gpsLat, longitude: gpsLon,
+        bypass_liveness: bypassLiveness
       })
     });
     const data = await resp.json();
